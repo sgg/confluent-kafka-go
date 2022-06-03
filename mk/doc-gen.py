@@ -5,15 +5,24 @@
 # for inclusion in Confluent doc tree.
 
 
-import subprocess, re
+import subprocess
+import re
 from bs4 import BeautifulSoup
+
+
+def convert_path(url, relative_path):
+    basename = url.split('/')[-1]
+    if basename == "style.css":
+        basename = "styles.css"
+    return f'{relative_path}/{basename}'
 
 
 if __name__ == '__main__':
 
     # Use godoc client to extract our package docs
     html_in = subprocess.check_output(
-        'godoc -url=/pkg/github.com/confluentinc/confluent-kafka-go/kafka | egrep -v "^using (GOPATH|module) mode"', shell=True)
+        'godoc -url=/pkg/github.com/confluentinc/confluent-kafka-go/kafka ' +
+        '| egrep -v "^using (GOPATH|module) mode"', shell=True)
 
     # Parse HTML
     soup = BeautifulSoup(html_in, 'html.parser')
@@ -23,17 +32,16 @@ if __name__ == '__main__':
 
     # Remove "Subdirectories"
     soup.find(id='pkg-subdirectories').decompose()
-    soup.find(attrs={'class':'pkg-dir'}).decompose()
+    soup.find(attrs={'class': 'pkg-dir'}).decompose()
     for t in soup.find_all(href='#pkg-subdirectories'):
         t.decompose()
 
     # Use golang.org for external resources (such as CSS and JS)
     for t in soup.find_all(href=re.compile(r'^/')):
-        t['href'] = '//golang.org' + t['href']
+        t['href'] = 'https://go.dev/' + convert_path(t['href'], "css")
 
     for t in soup.find_all(src=re.compile(r'^/')):
-        t['src'] = '//golang.org' + t['src']
+        t['src'] = 'https://go.dev/' + convert_path(t['src'], "js")
 
     # Write updated HTML to stdout
     print(soup.prettify())
-
